@@ -9,6 +9,10 @@ moderation.db
 moderation.db-shm
 moderation.db-wal
 
+# Local AutoMod filter lists
+automod/bannedwords.js
+automod/phishingDomains.js
+
 # Logs
 *.log
 npm-debug.log*
