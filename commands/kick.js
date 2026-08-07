@@ -1,4 +1,5 @@
 const { PermissionFlagsBits } = require("discord.js");
+const { recordModerationCase } = require("../moderation/logs");
 
 module.exports = {
   name: "kick",
@@ -23,6 +24,13 @@ module.exports = {
       return message.reply("❌ You can't kick yourself 😭");
     }
 
+    if (
+      message.guild.ownerId !== message.author.id &&
+      message.member.roles.highest.comparePositionTo(target.roles.highest) <= 0
+    ) {
+      return message.reply("❌ You can't kick a member with an equal or higher role.");
+    }
+
     if (!target.kickable) {
       return message.reply("❌ I can't kick that member. Check my role position and permissions.");
     }
@@ -35,15 +43,26 @@ module.exports = {
         `Reason: ${reason}\n` +
         `Moderator: ${message.author.tag}`
       );
-    } catch (error) {
+    } catch {
       console.log(`Could not DM kicked user ${target.user.tag}.`);
     }
 
     await target.kick(`${reason} | Moderator: ${message.author.tag}`);
 
+    const caseId = await recordModerationCase({
+      guild: message.guild,
+      userId: target.id,
+      moderatorId: message.author.id,
+      action: "Kick",
+      detector: "Manual moderation",
+      reason,
+      channelId: message.channel.id,
+      messageId: message.id
+    });
+
     await message.channel.send(
       `🥾 **${target.user.tag}** was kicked by **${message.author.tag}**.\n` +
-      `Reason: ${reason}`
+      `Reason: ${reason}\nCase: **#${caseId}**`
     );
   }
 };
