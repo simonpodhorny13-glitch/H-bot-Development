@@ -36,23 +36,28 @@ if (fs.existsSync(commandsPath)) {
 }
 
 client.on("messageCreate", async message => {
+  console.log("MESSAGE:", message.content);
+  console.log("AUTHOR:", message.author.id);
+
   if (message.author.bot) return;
 
   const prefix = "!";
-
   if (!message.content.startsWith(prefix)) return;
 
   const args = message.content.slice(prefix.length).trim().split(/\s+/);
   const commandName = args.shift().toLowerCase();
 
+  console.log("COMMAND:", commandName);
+
   const command = client.commands.get(commandName);
+  console.log("FOUND:", !!command);
 
   if (!command) return;
 
   try {
     await command.execute(message, args);
   } catch (err) {
-    console.error(err);
+    console.error("Command error:", err);
     await message.reply("❌ Something went wrong.");
   }
 });
