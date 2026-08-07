@@ -67,6 +67,19 @@ module.exports = {
       punishment = "Automatic punishment failed";
     }
 
+    const dmPunishment = punishment === "None" ? "No automatic punishment." : `Automatic action: ${punishment}`;
+
+    try {
+      await target.user.send(
+        `⚠️ You were warned in **${message.guild.name}**.\n` +
+        `Reason: ${reason}\n` +
+        `Warnings: ${count}/6\n` +
+        dmPunishment
+      );
+    } catch (error) {
+      console.log(`Could not DM warned user ${target.user.tag}.`);
+    }
+
     await message.channel.send(
       `⚠️ ${target.user.tag} was warned by ${message.author.tag}.\n` +
       `Reason: ${reason}\n` +
