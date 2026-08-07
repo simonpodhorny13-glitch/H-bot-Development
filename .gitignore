@@ -4,6 +4,11 @@
 # Installed npm packages
 node_modules/
 
+# Local SQLite database
+moderation.db
+moderation.db-shm
+moderation.db-wal
+
 # Logs
 *.log
 npm-debug.log*
