@@ -60,15 +60,45 @@ function isConfirmed(hostname) {
     .some(domain => isSameOrSubdomain(hostname, domain));
 }
 
+function editDistance(a, b) {
+  const rows = Array.from({ length: a.length + 1 }, () => []);
+
+  for (let i = 0; i <= a.length; i++) rows[i][0] = i;
+  for (let j = 0; j <= b.length; j++) rows[0][j] = j;
+
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      rows[i][j] = Math.min(
+        rows[i - 1][j] + 1,
+        rows[i][j - 1] + 1,
+        rows[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+    }
+  }
+
+  return rows[a.length][b.length];
+}
+
 function looksLikeDiscordImpersonation(hostname) {
   if (isTrusted(hostname)) return false;
 
-  const compact = hostname.replace(/[^a-z0-9]/g, "");
-  return (
-    compact.includes("discord") ||
-    compact.includes("nitro") ||
-    compact.includes("discordgift")
-  );
+  const labels = hostname.split(".").filter(Boolean);
+  const brandLabels = labels.slice(0, -1);
+
+  for (const label of brandLabels) {
+    const compact = label.replace(/[^a-z0-9]/g, "");
+
+    if (compact === "discord") return true;
+    if (compact.length >= 5 && compact.length <= 9 && editDistance(compact, "discord") <= 2) {
+      return true;
+    }
+
+    if (compact.includes("nitro") && compact.includes("gift")) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function detectPhishing(content) {
