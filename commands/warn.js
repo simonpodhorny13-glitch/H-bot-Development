@@ -1,5 +1,5 @@
 const { PermissionFlagsBits } = require("discord.js");
-const db = require("../database");
+const { addWarning } = require("../moderation/warnings");
 
 module.exports = {
   name: "warn",
@@ -24,67 +24,32 @@ module.exports = {
       return message.reply("❌ You can't warn yourself 😭");
     }
 
+    if (
+      message.guild.ownerId !== message.author.id &&
+      message.member.roles.highest.comparePositionTo(target.roles.highest) <= 0
+    ) {
+      return message.reply("❌ You can't warn a member with an equal or higher role.");
+    }
+
     const reason = args.slice(1).join(" ").trim() || "No reason provided";
 
-    db.prepare(`
-      INSERT INTO warnings (guild_id, user_id, moderator_id, reason)
-      VALUES (?, ?, ?, ?)
-    `).run(message.guild.id, target.id, message.author.id, reason);
-
-    const { count } = db.prepare(`
-      SELECT COUNT(*) AS count
-      FROM warnings
-      WHERE guild_id = ? AND user_id = ?
-    `).get(message.guild.id, target.id);
-
-    let punishment = "None";
-
-    try {
-      if (count === 2) {
-        if (!target.moderatable) {
-          punishment = "10-minute timeout failed (check bot role/permissions)";
-        } else {
-          await target.timeout(10 * 60 * 1000, `Reached 2 warnings: ${reason}`);
-          punishment = "10-minute timeout 🔇";
-        }
-      } else if (count === 4) {
-        if (!target.kickable) {
-          punishment = "Kick failed (check bot role/permissions)";
-        } else {
-          await target.kick(`Reached 4 warnings: ${reason}`);
-          punishment = "Kicked 🥾";
-        }
-      } else if (count === 6) {
-        if (!target.bannable) {
-          punishment = "Ban failed (check bot role/permissions)";
-        } else {
-          await target.ban({ reason: `Reached 6 warnings: ${reason}` });
-          punishment = "Banned 🔨";
-        }
-      }
-    } catch (error) {
-      console.error("Auto-punishment failed:", error);
-      punishment = "Automatic punishment failed";
-    }
-
-    const dmPunishment = punishment === "None" ? "No automatic punishment." : `Automatic action: ${punishment}`;
-
-    try {
-      await target.user.send(
-        `⚠️ You were warned in **${message.guild.name}**.\n` +
-        `Reason: ${reason}\n` +
-        `Warnings: ${count}/6\n` +
-        dmPunishment
-      );
-    } catch (error) {
-      console.log(`Could not DM warned user ${target.user.tag}.`);
-    }
+    const result = await addWarning({
+      guild: message.guild,
+      target,
+      moderatorId: message.author.id,
+      moderatorTag: message.author.tag,
+      reason,
+      source: "Manual warning",
+      channelId: message.channel.id,
+      messageId: message.id
+    });
 
     await message.channel.send(
       `⚠️ ${target.user.tag} was warned by ${message.author.tag}.\n` +
       `Reason: ${reason}\n` +
-      `Warnings: **${count}/6**\n` +
-      `Punishment: **${punishment}**`
+      `Warnings: **${result.count}/6**\n` +
+      `Punishment: **${result.punishment}**\n` +
+      `Case: **#${result.caseId}**`
     );
   }
 };
